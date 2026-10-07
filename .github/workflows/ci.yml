@@ -1,0 +1,29 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        cc: [gcc, clang]
+    env:
+      CC: ${{ matrix.cc }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build (warnings visible)
+        run: make all
+      - name: Test
+        run: make test
+      - name: ASan + UBSan + LeakSanitizer
+        run: make asan
+      - name: ThreadSanitizer
+        run: |
+          # TSan needs a lower ASLR entropy on newer kernels
+          sudo sysctl -w vm.mmap_rnd_bits=28 || true
+          make tsan
