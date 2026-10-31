@@ -87,6 +87,12 @@ int main(int argc, char **argv)
     unsigned rd      = argc > 5 ? (unsigned)atoi(argv[5]) : 70;
     unsigned lat     = argc > 6 ? (unsigned)atoi(argv[6]) : 20;
 
+    if (threads == 0 || queues == 0 || depth < 2 || rd > 100 || secs <= 0.0 || secs > 3600.0) {
+        fprintf(stderr, "invalid arguments: threads and queues must be positive, depth >= 2, seconds in (0, 3600], read_pct in [0, 100]\n");
+        return 2;
+    }
+    if (threads > 64) threads = 64;
+
     qp_dev_config dc = { .max_queues = queues, .capacity_blocks = 1u << 18, .arena_bytes = 64u << 20,
                          .lat_min_us = lat / 2, .lat_max_us = lat + lat / 2 };
     qp_device *dev = qp_dev_create(&dc);
@@ -98,7 +104,6 @@ int main(int argc, char **argv)
     if (window > 64) window = 64;
     if (!window) window = 1;
     pthread_t th[64]; bt_t bt[64]; atomic_int errs = 0;
-    if (threads > 64) threads = 64;
     uint64_t t0 = now_ns();
     for (unsigned i = 0; i < threads; i++) {
         bt[i] = (bt_t){ .drv = drv, .q = i % queues, .window = window, .seconds = secs, .read_pct = rd,
